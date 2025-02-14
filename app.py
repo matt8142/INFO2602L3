@@ -49,15 +49,53 @@ def index():
   return '<h1>mY Todo API</h1>'
 
 # Task 3.1 Here
-
+def login_user(username, password):
+  user = User.query.filter_by(username=username).first()
+  if user and user.check_password(password):
+    token = create_access_token(identity=username)
+    response = jsonify(access_token=token)
+    set_access_cookies(response, token)
+    return response
+  return jsonify(message="Invalid username or password"), 401
+  
 # Task 3.2 Here
+@app.route('/login', methods=['POST'])
+def user_login_view():
+  data = request.json
+  response = login_user(data['username'], data['password'])
+  if not response:
+    return jsonify(message='bad username or password given'), 403
+  return response
 
 # Task 3.3 Here
-
+@app.route('/identify')
+@jwt_required()
+def identify_view():
+  username = get_jwt_identity()
+  user = User.query.filter_by(username=username).first()
+  if user:
+    return jsonify(user.get_json())
+  return jsonify(message='Invalid user'), 403
+  
 # Task 3.4 Here
-
+@app.route('/logout', methods=['GET'])
+def logout():
+  response = jsonify(message='Logged out')
+  unset_jwt_cookies(response)
+  return response
+  
 # Task 4 Here
-
+@app.route('/signup', methods=['POST'])
+def signup_user_view():
+  data = request.json
+  try:
+    new_user = RegularUser(data['username'], data['email'], data['password'])
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify(message=f'User {new_user.id} - {new_user.username} created!'), 201
+  except IntegrityError:
+    db.session.rollback()
+    return jsonify(message='Username already exists'), 400
 # ********** Todo Crud Operations ************
 
 
